@@ -1,4 +1,5 @@
 using InkassoMiddleware.Models;
+using InkassoMiddleware.IOBS;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,18 +11,18 @@ builder.Services.AddSwaggerGen();
 // Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowAll", builder =>
     {
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
     });
 });
 
-var app = builder.Build();
+// Register SOAP client
+builder.Services.AddSingleton<InkassoIOBSClient>();
 
-// Enable CORS
-app.UseCors();
+var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -29,6 +30,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 
 var summaries = new[]
 {
@@ -57,6 +61,37 @@ app.MapPost("/create-claim", (ClaimBatchItem claim) =>
     Console.WriteLine($"Received claim: {System.Text.Json.JsonSerializer.Serialize(claim)}");
     
     return Results.Ok(new { message = "Claim received successfully" });
+});
+
+// Query claims endpoint
+app.MapPost("/query-claims", async (InkassoIOBSClient client, ClaimQueryRequest query) =>
+{
+    try
+    {
+        var claims = await client.QueryClaimsAsync(new ClaimsQuery
+        {
+            EntryFrom = 1,
+            EntryFromSpecified = true,
+            EntryTo = 1000,
+            EntryToSpecified = true,
+            ClaimantId = query.ClaimantId,
+            Period = new ClaimsQueryDateSpan
+            {
+                DateFrom = query.FromDate,
+                DateTo = query.ToDate,
+                DateFromSpecified = true,
+                DateToSpecified = true,
+                DateSpanReferenceDate = DateSpanReferenceDate.CreationDate,
+                DateSpanReferenceDateSpecified = true
+            }
+        });
+
+        return Results.Ok(claims);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
 });
 
 app.Run();
