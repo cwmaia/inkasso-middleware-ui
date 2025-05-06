@@ -1,5 +1,5 @@
 using InkassoMiddleware.Models;
-using InkassoMiddleware.IOBS;
+using InkassoMiddleware.Soap;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,8 +19,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Register SOAP client
-builder.Services.AddSingleton<InkassoIOBSClient>();
+// Add WCF Client
+builder.Services.AddSingleton(sp =>
+{
+    var binding = new System.ServiceModel.BasicHttpBinding(System.ServiceModel.BasicHttpSecurityMode.TransportCredentialOnly);
+    binding.Security.Transport.ClientCredentialType = System.ServiceModel.HttpClientCredentialType.Basic;
+
+    var endpoint = new System.ServiceModel.EndpointAddress("http://demo-inkasso.azurewebsites.net/SOAP/IOBS/IcelandicOnlineBankingClaimsSoap.svc");
+
+    var client = new IcelandicOnlineBankingClaimsSoapClient(binding, endpoint);
+    client.ClientCredentials.UserName.UserName = "servicetest";
+    client.ClientCredentials.UserName.Password = "znvwYV5";
+    return client;
+});
 
 var app = builder.Build();
 
@@ -64,33 +75,70 @@ app.MapPost("/create-claim", (ClaimBatchItem claim) =>
 });
 
 // Query claims endpoint
-app.MapPost("/query-claims", async (InkassoIOBSClient client, ClaimQueryRequest query) =>
+app.MapPost("/query-claims", async (IcelandicOnlineBankingClaimsSoapClient client, ClaimQueryRequest req) =>
 {
     try
     {
-        var claims = await client.QueryClaimsAsync(new ClaimsQuery
+        var query = new InkassoMiddleware.Soap.ClaimsQuery
         {
             EntryFrom = 1,
             EntryFromSpecified = true,
-            EntryTo = 1000,
+            EntryTo = 10,
             EntryToSpecified = true,
-            ClaimantId = query.ClaimantId,
-            Period = new ClaimsQueryDateSpan
+            Claimant = req.ClaimantId,
+            Period = new InkassoMiddleware.Soap.ClaimsQueryDateSpan
             {
-                DateFrom = query.FromDate,
-                DateTo = query.ToDate,
+                DateFrom = req.FromDate,
+                DateTo = req.ToDate,
                 DateFromSpecified = true,
                 DateToSpecified = true,
-                DateSpanReferenceDate = DateSpanReferenceDate.CreationDate,
+                DateSpanReferenceDate = InkassoMiddleware.Soap.DateSpanReferenceDate.CreationDate,
                 DateSpanReferenceDateSpecified = true
             }
-        });
+        };
 
-        return Results.Ok(claims);
+        var result = await client.QueryClaimsAsync(query);
+        return Results.Ok(result);
     }
     catch (Exception ex)
     {
-        return Results.Problem(ex.Message);
+        return Results.Problem($"SOAP Error: {ex.Message}");
+    }
+});
+
+// Add test connection endpoint
+app.MapGet("/test-connection", async (IcelandicOnlineBankingClaimsSoapClient client) =>
+{
+    try
+    {
+        var query = new InkassoMiddleware.Soap.ClaimsQuery
+        {
+            EntryFrom = 1,
+            EntryFromSpecified = true,
+            EntryTo = 10,
+            EntryToSpecified = true,
+            Claimant = "1021021020",
+            Period = new InkassoMiddleware.Soap.ClaimsQueryDateSpan
+            {
+                DateFrom = DateTime.UtcNow.AddYears(-1),
+                DateTo = DateTime.UtcNow,
+                DateFromSpecified = true,
+                DateToSpecified = true,
+                DateSpanReferenceDate = InkassoMiddleware.Soap.DateSpanReferenceDate.CreationDate,
+                DateSpanReferenceDateSpecified = true
+            }
+        };
+
+        var result = await client.QueryClaimsAsync(query);
+        return Results.Ok(new { status = "success", message = "Connected and received response from Inkasso API." });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            statusCode: 500,
+            title: "Connection Error",
+            detail: $"Failed to connect to Inkasso API. Error: {ex.Message}"
+        );
     }
 });
 
