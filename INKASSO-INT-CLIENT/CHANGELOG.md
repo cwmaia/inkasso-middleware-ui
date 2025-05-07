@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-05-07
+
+### Added
+- Mock SOAP endpoint for Inkasso integration testing
+  - New `/mock-inkasso` endpoint that returns a fixed SOAP 1.2 response
+  - Support for Content-Type: application/soap+xml
+  - Fixed response with sample claim data
+- Enhanced InkassoRawSoapClient with mock support
+  - JSON mock endpoint for direct mock data access
+  - JSON to SOAP conversion for seamless integration
+  - Robust parsing with fallback mechanisms
+- New `/mock-inkasso-json` endpoint for direct JSON access to mock data
+
+### Changed
+- Updated InkassoRawSoapClient to support environment variable configuration for mock testing
+- Improved error handling and logging in SOAP response parsing
+
 ## [0.2.0] - 2025-05-07
 
 ### Added

@@ -145,29 +145,61 @@ app.MapGet("/test-connection", async (IcelandicOnlineBankingClaimsSoapClient cli
 });
 
 // Add raw SOAP test endpoint
-app.MapGet("/test-raw-soap", async () =>
+app.MapGet("/test-raw-soap", async (HttpRequest request) =>
 {
     try
     {
-        // Create a StringWriter to capture console output
-        var originalOut = Console.Out;
-        using var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        // Check if we should use the mock endpoint
+        bool useMock = request.Query.ContainsKey("useMock") || InkassoRawSoapClient.IsUsingMockEndpoint();
+        
+        // If useMock is true and INKASSO_URL is not set, set it temporarily
+        string? originalUrl = null;
+        if (useMock && Environment.GetEnvironmentVariable("INKASSO_URL") == null)
+        {
+            originalUrl = Environment.GetEnvironmentVariable("INKASSO_URL");
+            Environment.SetEnvironmentVariable("INKASSO_URL", "http://localhost:5284/mock-inkasso");
+        }
+        
+        try
+        {
+            // Create a StringWriter to capture console output
+            var originalOut = Console.Out;
+            using var stringWriter = new StringWriter();
+            Console.SetOut(stringWriter);
 
-        // Run the test
-        await TestSoapClient.RunTest();
+            // Test parameters
+            string claimantId = "1021021020";
+            DateTime fromDate = new DateTime(2024, 1, 1);
+            DateTime toDate = new DateTime(2024, 12, 31);
 
-        // Restore console output
-        Console.SetOut(originalOut);
+            // Query claims
+            string soapResponse = await InkassoRawSoapClient.QueryClaimsAsync(claimantId, fromDate, toDate);
+            
+            // Parse claims from the response
+            var claims = InkassoRawSoapClient.ParseClaimsFromSoapResponse(soapResponse);
 
-        // Get the captured output
-        string testOutput = stringWriter.ToString();
+            // Restore console output
+            Console.SetOut(originalOut);
 
-        return Results.Ok(new { 
-            status = "success", 
-            message = "Raw SOAP test executed", 
-            output = testOutput 
-        });
+            // Get the captured output
+            string testOutput = stringWriter.ToString();
+
+            return Results.Ok(new { 
+                status = "success", 
+                message = "Raw SOAP test executed", 
+                usingMock = useMock,
+                claims = claims,
+                output = testOutput 
+            });
+        }
+        finally
+        {
+            // Restore the original endpoint URL if we changed it
+            if (useMock && originalUrl != null)
+            {
+                Environment.SetEnvironmentVariable("INKASSO_URL", originalUrl);
+            }
+        }
     }
     catch (Exception ex)
     {
@@ -177,6 +209,121 @@ app.MapGet("/test-raw-soap", async () =>
             detail: $"Failed to execute raw SOAP test. Error: {ex.Message}"
         );
     }
+});
+
+// Add mock SOAP test endpoint
+app.MapGet("/test-mock-soap", async () =>
+{
+    try
+    {
+        // Create a StringWriter to capture console output
+        var originalOut = Console.Out;
+        using var stringWriter = new StringWriter();
+        Console.SetOut(stringWriter);
+
+        // Run the mock test
+        await TestSoapClient.RunMockTest();
+
+        // Restore console output
+        Console.SetOut(originalOut);
+
+        // Get the captured output
+        string testOutput = stringWriter.ToString();
+
+        return Results.Ok(new { 
+            status = "success", 
+            message = "Mock SOAP test executed", 
+            output = testOutput 
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            statusCode: 500,
+            title: "Mock SOAP Test Error",
+            detail: $"Failed to execute mock SOAP test. Error: {ex.Message}"
+        );
+    }
+});
+
+// Mock Inkasso SOAP endpoint for testing
+app.MapPost("/mock-inkasso", async (HttpRequest request) =>
+{
+    try
+    {
+        // Read the incoming SOAP body but don't log it to avoid console issues
+        // Just drain the request body to ensure it's processed
+        using var reader = new StreamReader(request.Body);
+        await reader.ReadToEndAsync();
+        
+        // Fixed SOAP 1.2 response
+        string mockResponse = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://www.w3.org/2003/05/soap-envelope""
+               xmlns:iobs=""http://IcelandicOnlineBanking/2005/12/01/Claims"">
+  <soap:Body>
+    <iobs:QueryClaimsResponse>
+      <iobs:QueryClaimsResult>
+        <iobs:Claim>
+          <iobs:ClaimId>123456789</iobs:ClaimId>
+          <iobs:Reference>ABC-2024</iobs:Reference>
+          <iobs:DueDate>2024-06-01</iobs:DueDate>
+          <iobs:Capital>99000</iobs:Capital>
+        </iobs:Claim>
+        <iobs:Claim>
+          <iobs:ClaimId>987654321</iobs:ClaimId>
+          <iobs:Reference>XYZ-2024</iobs:Reference>
+          <iobs:DueDate>2024-08-15</iobs:DueDate>
+          <iobs:Capital>112500</iobs:Capital>
+        </iobs:Claim>
+      </iobs:QueryClaimsResult>
+    </iobs:QueryClaimsResponse>
+  </soap:Body>
+</soap:Envelope>";
+
+        // Return the mock response with appropriate headers
+        return Results.Text(
+            mockResponse,
+            contentType: "application/soap+xml; charset=utf-8",
+            statusCode: 200
+        );
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            statusCode: 500,
+            title: "Mock SOAP Endpoint Error",
+            detail: $"Error processing request: {ex.Message}"
+        );
+    }
+});
+
+// Add comment to show how to switch InkassoRawSoapClient to use this endpoint for testing
+// To use the mock endpoint, set the INKASSO_URL environment variable:
+// Environment.SetEnvironmentVariable("INKASSO_URL", "http://localhost:5284/mock-inkasso");
+
+// Add a direct mock endpoint that returns JSON data for testing
+app.MapGet("/mock-inkasso-json", () =>
+{
+    // Create mock claims data that matches the structure in the SOAP response
+    var mockClaims = new List<InkassoMiddleware.Models.ClaimResult>
+    {
+        new InkassoMiddleware.Models.ClaimResult
+        {
+            ClaimId = "123456789",
+            Reference = "ABC-2024",
+            DueDate = DateTime.Parse("2024-06-01"),
+            Capital = 99000
+        },
+        new InkassoMiddleware.Models.ClaimResult
+        {
+            ClaimId = "987654321",
+            Reference = "XYZ-2024",
+            DueDate = DateTime.Parse("2024-08-15"),
+            Capital = 112500
+        }
+    };
+
+    return Results.Ok(mockClaims);
 });
 
 app.Run();
