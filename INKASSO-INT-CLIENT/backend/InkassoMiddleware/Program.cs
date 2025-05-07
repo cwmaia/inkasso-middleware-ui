@@ -1,3 +1,5 @@
+using System.IO;
+using InkassoMiddleware;
 using InkassoMiddleware.Models;
 using InkassoMiddleware.Soap;
 
@@ -138,6 +140,41 @@ app.MapGet("/test-connection", async (IcelandicOnlineBankingClaimsSoapClient cli
             statusCode: 500,
             title: "Connection Error",
             detail: $"Failed to connect to Inkasso API. Error: {ex.Message}"
+        );
+    }
+});
+
+// Add raw SOAP test endpoint
+app.MapGet("/test-raw-soap", async () =>
+{
+    try
+    {
+        // Create a StringWriter to capture console output
+        var originalOut = Console.Out;
+        using var stringWriter = new StringWriter();
+        Console.SetOut(stringWriter);
+
+        // Run the test
+        await TestSoapClient.RunTest();
+
+        // Restore console output
+        Console.SetOut(originalOut);
+
+        // Get the captured output
+        string testOutput = stringWriter.ToString();
+
+        return Results.Ok(new { 
+            status = "success", 
+            message = "Raw SOAP test executed", 
+            output = testOutput 
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            statusCode: 500,
+            title: "Raw SOAP Test Error",
+            detail: $"Failed to execute raw SOAP test. Error: {ex.Message}"
         );
     }
 });
