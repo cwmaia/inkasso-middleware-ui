@@ -1,0 +1,10 @@
+{
+  "project": {
+    "name": "Inkasso Middleware UI",
+    "description": "A middleware UI for the Inkasso banking claims system"
+  },
+  "preferences": {
+    "language": ["csharp", "javascript", "typescript"],
+    "framework": ["aspnetcore", "react"]
+  }
+}

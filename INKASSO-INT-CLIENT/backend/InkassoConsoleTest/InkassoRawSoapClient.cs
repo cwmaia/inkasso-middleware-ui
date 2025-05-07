@@ -13,8 +13,8 @@ namespace InkassoConsoleTest
     {
         private const string SoapEndpoint = "https://demo-inkasso.azurewebsites.net/SOAP/IOBS/IcelandicOnlineBankingClaimsSoap.svc";
         private const string SoapAction = "http://IcelandicOnlineBanking/2005/12/01/Claims/IIcelandicOnlineBankingClaimsSoap/QueryClaims";
-        private const string Username = "servicetest";
-        private const string Password = "znvwYV5";
+        private const string Username = "testdev.inkasso";
+        private const string Password = "$ILove2Code";
 
         /// <summary>
         /// Queries claims using raw SOAP 1.2 request

@@ -24,14 +24,14 @@ builder.Services.AddCors(options =>
 // Add WCF Client
 builder.Services.AddSingleton(sp =>
 {
-    var binding = new System.ServiceModel.BasicHttpBinding(System.ServiceModel.BasicHttpSecurityMode.TransportCredentialOnly);
+    var binding = new System.ServiceModel.BasicHttpBinding(System.ServiceModel.BasicHttpSecurityMode.Transport);
     binding.Security.Transport.ClientCredentialType = System.ServiceModel.HttpClientCredentialType.Basic;
 
-    var endpoint = new System.ServiceModel.EndpointAddress("http://demo-inkasso.azurewebsites.net/SOAP/IOBS/IcelandicOnlineBankingClaimsSoap.svc");
+    var endpoint = new System.ServiceModel.EndpointAddress("https://demo-inkasso.azurewebsites.net/SOAP/IOBS/IcelandicOnlineBankingClaimsSoap.svc");
 
     var client = new IcelandicOnlineBankingClaimsSoapClient(binding, endpoint);
-    client.ClientCredentials.UserName.UserName = "servicetest";
-    client.ClientCredentials.UserName.Password = "znvwYV5";
+    client.ClientCredentials.UserName.UserName = "testdev.inkasso";
+    client.ClientCredentials.UserName.Password = "$ILove2Code";
     return client;
 });
 

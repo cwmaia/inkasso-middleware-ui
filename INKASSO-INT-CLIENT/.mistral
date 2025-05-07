@@ -1,0 +1,19 @@
+{
+  "enabledLanguages": ["csharp", "javascript", "typescript", "html", "css"],
+  "suggestions": {
+    "enabled": true,
+    "delay": 100
+  },
+  "model": "mistral-codestral-free",
+  "projectContext": {
+    "backend": {
+      "type": "aspnetcore",
+      "version": "8.0",
+      "features": ["api", "soap-integration"]
+    },
+    "frontend": {
+      "directory": "frontend-new",
+      "status": "planned"
+    }
+  }
+}

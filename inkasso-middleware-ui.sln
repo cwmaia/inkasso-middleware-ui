@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "INKASSO-INT-CLIENT", "INKASSO-INT-CLIENT", "{7231544E-7C2E-6389-0672-3F8FD11E7D32}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{A6F8B22C-99D2-7063-9B17-6A245A76F0F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InkassoMiddleware", "INKASSO-INT-CLIENT\backend\InkassoMiddleware\InkassoMiddleware.csproj", "{9A56FE23-39E5-2E73-4B82-AFE723082B81}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9A56FE23-39E5-2E73-4B82-AFE723082B81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A56FE23-39E5-2E73-4B82-AFE723082B81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A56FE23-39E5-2E73-4B82-AFE723082B81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A56FE23-39E5-2E73-4B82-AFE723082B81}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A6F8B22C-99D2-7063-9B17-6A245A76F0F0} = {7231544E-7C2E-6389-0672-3F8FD11E7D32}
+		{9A56FE23-39E5-2E73-4B82-AFE723082B81} = {A6F8B22C-99D2-7063-9B17-6A245A76F0F0}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C56E2E29-9393-47F5-A604-7205CC27751E}
+	EndGlobalSection
+EndGlobal

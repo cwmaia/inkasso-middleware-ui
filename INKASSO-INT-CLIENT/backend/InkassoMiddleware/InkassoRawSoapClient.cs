@@ -25,8 +25,8 @@ namespace InkassoMiddleware
         private static readonly string JsonMockEndpoint = "http://localhost:5284/mock-inkasso-json";
         
         private const string SoapAction = "http://IcelandicOnlineBanking/2005/12/01/Claims/IIcelandicOnlineBankingClaimsSoap/QueryClaims";
-        private const string Username = "servicetest";
-        private const string Password = "znvwYV5";
+        private const string Username = "testdev.inkasso";
+        private const string Password = "$ILove2Code";
 
         /// <summary>
         /// Queries claims using raw SOAP 1.2 request
@@ -257,110 +257,61 @@ namespace InkassoMiddleware
         /// </summary>
         private static string ConstructSoapEnvelope(string claimantId, DateTime fromDate, DateTime toDate)
         {
-            // Create XML document
-            var doc = new XmlDocument();
+            // Instead of using XmlDocument, let's use a simple string builder approach
+            // This avoids issues with XML namespaces and attributes
+            var sb = new StringBuilder();
             
-            // Create XML declaration
-            XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
-            doc.AppendChild(xmlDeclaration);
+            // Create a unique ID for the security elements
+            string tokenId = "UsernameToken-" + Guid.NewGuid().ToString();
+            string timestampId = "Timestamp-" + Guid.NewGuid().ToString();
             
-            // Create SOAP envelope
-            XmlElement envelope = doc.CreateElement("soap12", "Envelope", "http://www.w3.org/2003/05/soap-envelope");
-            doc.AppendChild(envelope);
+            // Format timestamps
+            string createdTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+            string expiresTime = DateTime.UtcNow.AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:ssZ");
             
-            // Add namespaces
-            envelope.SetAttribute("xmlns:wsse", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
-            envelope.SetAttribute("xmlns:wsu", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
-            envelope.SetAttribute("xmlns:iob", "http://IcelandicOnlineBanking/2005/12/01/Claims");
+            // Build the SOAP envelope as a string
+            sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+            sb.AppendLine("<soap12:Envelope xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\"");
+            sb.AppendLine("                xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"");
+            sb.AppendLine("                xmlns:wsu=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\"");
+            sb.AppendLine("                xmlns:iob=\"http://IcelandicOnlineBanking/2005/12/01/Claims\">");
             
-            // Create header
-            XmlElement header = doc.CreateElement("soap12", "Header", "http://www.w3.org/2003/05/soap-envelope");
-            envelope.AppendChild(header);
+            // Header with security
+            sb.AppendLine("  <soap12:Header>");
+            sb.AppendLine("    <wsse:Security soap12:mustUnderstand=\"1\">");
             
-            // Create security header
-            XmlElement security = doc.CreateElement("wsse", "Security", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
-            security.SetAttribute("soap12:mustUnderstand", "http://www.w3.org/2003/05/soap-envelope", "1");
-            header.AppendChild(security);
+            // Username token
+            sb.AppendLine($"      <wsse:UsernameToken wsu:Id=\"{tokenId}\">");
+            sb.AppendLine($"        <wsse:Username>{Username}</wsse:Username>");
+            sb.AppendLine($"        <wsse:Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText\">{Password}</wsse:Password>");
+            sb.AppendLine("      </wsse:UsernameToken>");
             
-            // Create UsernameToken
-            XmlElement usernameToken = doc.CreateElement("wsse", "UsernameToken", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
-            usernameToken.SetAttribute("wsu:Id", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd", "UsernameToken-" + Guid.NewGuid().ToString());
-            security.AppendChild(usernameToken);
+            // Timestamp
+            sb.AppendLine($"      <wsu:Timestamp wsu:Id=\"{timestampId}\">");
+            sb.AppendLine($"        <wsu:Created>{createdTime}</wsu:Created>");
+            sb.AppendLine($"        <wsu:Expires>{expiresTime}</wsu:Expires>");
+            sb.AppendLine("      </wsu:Timestamp>");
+            sb.AppendLine("    </wsse:Security>");
+            sb.AppendLine("  </soap12:Header>");
             
-            // Add username
-            XmlElement username = doc.CreateElement("wsse", "Username", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
-            username.InnerText = Username;
-            usernameToken.AppendChild(username);
+            // Body with query
+            sb.AppendLine("  <soap12:Body>");
+            sb.AppendLine("    <iob:QueryClaims>");
+            sb.AppendLine("      <iob:query>");
+            sb.AppendLine("        <iob:EntryFrom>1</iob:EntryFrom>");
+            sb.AppendLine("        <iob:EntryTo>10</iob:EntryTo>");
+            sb.AppendLine($"        <iob:Claimant>{claimantId}</iob:Claimant>");
+            sb.AppendLine("        <iob:Period>");
+            sb.AppendLine($"          <iob:DateFrom>{fromDate:yyyy-MM-dd}</iob:DateFrom>");
+            sb.AppendLine($"          <iob:DateTo>{toDate:yyyy-MM-dd}</iob:DateTo>");
+            sb.AppendLine("          <iob:DateSpanReferenceDate>CreationDate</iob:DateSpanReferenceDate>");
+            sb.AppendLine("        </iob:Period>");
+            sb.AppendLine("      </iob:query>");
+            sb.AppendLine("    </iob:QueryClaims>");
+            sb.AppendLine("  </soap12:Body>");
+            sb.AppendLine("</soap12:Envelope>");
             
-            // Add password
-            XmlElement passwordElement = doc.CreateElement("wsse", "Password", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
-            passwordElement.SetAttribute("Type", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText");
-            passwordElement.InnerText = Password;
-            usernameToken.AppendChild(passwordElement);
-            
-            // Create timestamp
-            XmlElement timestamp = doc.CreateElement("wsu", "Timestamp", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
-            timestamp.SetAttribute("wsu:Id", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd", "Timestamp-" + Guid.NewGuid().ToString());
-            security.AppendChild(timestamp);
-            
-            // Add created timestamp
-            XmlElement created = doc.CreateElement("wsu", "Created", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
-            created.InnerText = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
-            timestamp.AppendChild(created);
-            
-            // Add expires timestamp
-            XmlElement expires = doc.CreateElement("wsu", "Expires", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
-            expires.InnerText = DateTime.UtcNow.AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:ssZ");
-            timestamp.AppendChild(expires);
-            
-            // Create body
-            XmlElement body = doc.CreateElement("soap12", "Body", "http://www.w3.org/2003/05/soap-envelope");
-            envelope.AppendChild(body);
-            
-            // Create QueryClaims element
-            XmlElement queryClaims = doc.CreateElement("iob", "QueryClaims", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            body.AppendChild(queryClaims);
-            
-            // Create query element
-            XmlElement query = doc.CreateElement("iob", "query", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            queryClaims.AppendChild(query);
-            
-            // Add EntryFrom
-            XmlElement entryFrom = doc.CreateElement("iob", "EntryFrom", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            entryFrom.InnerText = "1";
-            query.AppendChild(entryFrom);
-            
-            // Add EntryTo
-            XmlElement entryTo = doc.CreateElement("iob", "EntryTo", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            entryTo.InnerText = "10";
-            query.AppendChild(entryTo);
-            
-            // Add Claimant
-            XmlElement claimant = doc.CreateElement("iob", "Claimant", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            claimant.InnerText = claimantId;
-            query.AppendChild(claimant);
-            
-            // Create Period element
-            XmlElement period = doc.CreateElement("iob", "Period", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            query.AppendChild(period);
-            
-            // Add DateFrom
-            XmlElement dateFrom = doc.CreateElement("iob", "DateFrom", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            dateFrom.InnerText = fromDate.ToString("yyyy-MM-dd");
-            period.AppendChild(dateFrom);
-            
-            // Add DateTo
-            XmlElement dateTo = doc.CreateElement("iob", "DateTo", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            dateTo.InnerText = toDate.ToString("yyyy-MM-dd");
-            period.AppendChild(dateTo);
-            
-            // Add DateSpanReferenceDate
-            XmlElement dateSpanReferenceDate = doc.CreateElement("iob", "DateSpanReferenceDate", "http://IcelandicOnlineBanking/2005/12/01/Claims");
-            dateSpanReferenceDate.InnerText = "CreationDate";
-            period.AppendChild(dateSpanReferenceDate);
-            
-            // Convert to string
-            return doc.OuterXml;
+            return sb.ToString();
         }
 
         /// <summary>
